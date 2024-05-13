@@ -1,0 +1,296 @@
+
+END TO END ANALISIS:
+QUERY:
+
+-- Menampilkan jumlah kendaraan curian berdasarkan jenis kendaraan, model tahun, warna kendaraan dan wilayah
+SELECT 
+    sv.vehicle_type,
+    sv.model_year,
+	sv.color,
+    l.region,
+    COUNT(*) AS total_stolen_vehicles
+FROM 
+    stolen_vehicle sv
+JOIN 
+    locations l ON sv.location_id = l.location_id
+GROUP BY 
+    sv.vehicle_type, sv.model_year, sv.color, l.region
+ORDER BY 
+    total_stolen_vehicles DESC
+	LIMIT 10
+
+
+
+-- Menampilkan wilayah dengan jumlah kendaraan curian terbanyak beserta populasi
+SELECT 
+    l.region,
+    l.population,
+    COUNT(*) AS total_stolen_vehicles
+FROM 
+    stolen_vehicle sv
+JOIN 
+    locations l ON sv.location_id = l.location_id
+GROUP BY 
+    l.region, l.population
+ORDER BY 
+    total_stolen_vehicles DESC
+LIMIT 100;
+
+
+CREATE TABLE:
+CREATE TABLE region_stolen AS
+SELECT 
+    l.region,
+    l.population,
+    COUNT(*) AS total_stolen_vehicles
+FROM 
+    stolen_vehicle sv
+JOIN 
+    locations l ON sv.location_id = l.location_id
+GROUP BY 
+    l.region, l.population
+ORDER BY 
+    total_stolen_vehicles DESC
+LIMIT 100;
+
+
+
+
+
+SELECT 
+    sv.vehicle_type,
+    COUNT(*) AS total_stolen
+FROM 
+    stolen_vehicle sv
+JOIN 
+    locations l ON sv.location_id = l.location_id
+GROUP BY 
+    sv.vehicle_type
+ORDER BY 
+    total_stolen asc
+	limit 10;
+
+
+
+SELECT 
+    sv.model_year,
+    COUNT(*) AS total_stolen
+FROM 
+    stolen_vehicle sv
+JOIN 
+    locations l ON sv.location_id = l.location_id
+GROUP BY 
+    sv.model_year
+ORDER BY 
+    total_stolen DESC;
+
+
+
+---============= MENAMPILKAN PENCURIAN TERBANYAK BERDASARKAN MAKE_NAME (MEREK)
+SELECT
+    m.make_name,
+    COUNT(*) AS jumlah_pencurian
+FROM
+    stolen_vehicle sv
+JOIN
+    make_details m ON sv.make_id = m.make_id
+GROUP BY
+    m.make_name
+ORDER BY
+    jumlah_pencurian DESC;
+
+
+
+---============= MENAMPILKAN PENCURIAN TERBANYAK BERDASARKAN MAKE_TYPE
+SELECT
+    m.make_type,
+    COUNT(*) AS jumlah_pencurian
+FROM
+    stolen_vehicle sv
+JOIN
+    make_details m ON sv.make_id = m.make_id
+GROUP BY
+    m.make_type
+ORDER BY
+    jumlah_pencurian DESC;
+
+
+
+---============= MENAMPILKAN PENCURIAN TERBANYAK BERDASARKAN REGION
+SELECT
+    m.region,
+    COUNT(*) AS region_pencurian
+FROM
+    stolen_vehicle sv
+JOIN
+    locations m ON sv.location_id = m.location_id
+GROUP BY
+    m.region
+ORDER BY
+    region_pencurian DESC;
+
+
+----==========DATA PERBANDINGAN PENCURIAN DENGAN POPULASI
+SELECT
+    l.region,
+    l.country,
+    l.population,
+    COUNT(*) AS jumlah_pencurian,
+    (COUNT(*) / l.population::float) AS pencurian_per_juta_penduduk
+FROM
+    locations l
+LEFT JOIN
+    stolen_vehicle sv ON l.location_id = sv.location_id
+GROUP BY
+    l.region,
+    l.country,
+    l.population
+ORDER BY
+    pencurian_per_juta_penduduk DESC;
+
+
+
+
+---======PERBANDINGAN BANYAK ANTARA MAKE_TYPE (STANDART AND LUXURY)
+SELECT
+    md.make_type,
+    COUNT(DISTINCT md.make_name) AS jumlah_jenis_mobil
+FROM
+    make_details md
+JOIN
+    stolen_vehicle sv ON md.make_id = sv.make_id
+WHERE
+    md.make_type IN ('Luxury', 'Standard')
+GROUP BY
+    md.make_type;
+
+
+
+
+----=====PERBANDINGAN KENDARAAN YANG DICURI BERDASARKAN TYPE DAN NAMA KENDARAAN
+SELECT
+    make_type,
+    make_name,
+    total_stolen
+FROM (
+    SELECT
+        md.make_type,
+        md.make_name,
+        COUNT(sv.make_id) AS total_stolen,
+        ROW_NUMBER() OVER(PARTITION BY md.make_type ORDER BY COUNT(sv.make_id) DESC) AS row_num
+    FROM
+        make_details md
+    JOIN
+        stolen_vehicle sv ON md.make_id = sv.make_id
+    GROUP BY
+        md.make_type,
+        md.make_name
+) AS subquery
+WHERE
+    row_num <= 5
+ORDER BY
+    make_type,
+    total_stolen DESC;
+
+
+
+
+---===============PERBANDINGAN MOBIL YANG DICURI BERDASARKAN WARNA
+SELECT
+    color,
+    COUNT(*) AS total_stolen
+FROM
+    stolen_vehicle
+GROUP BY
+    color
+ORDER BY
+    total_stolen DESC;
+
+
+
+
+
+----========PENCURIAN BERDASARKAN HARINYA
+SELECT
+    date_stolen,
+    COUNT(*) AS total_stolen
+FROM
+    stolen_vehicle
+GROUP BY
+    date_stolen
+ORDER BY
+    total_stolen desc
+
+
+
+
+----====RATA-RATA PENCURIAN SETIAP HARINYA
+SELECT
+    AVG(total_stolen) AS rata_rata_pencurian_per_hari
+FROM (
+    SELECT
+        date_stolen,
+        COUNT(*) AS total_stolen
+    FROM
+        stolen_vehicle
+    GROUP BY
+        date_stolen
+) AS daily_stolen;
+
+
+----====TOTAL PENCURIAN SETIAP BULANNYA
+SELECT
+    DATE_TRUNC('month', date_stolen) AS bulan,
+    COUNT(*) AS total_pencurian
+FROM
+    stolen_vehicle
+GROUP BY
+    DATE_TRUNC('month', date_stolen)
+ORDER BY
+    DATE_TRUNC('month', date_stolen);
+
+
+
+----====RATA-RATA PENCURIAN SETIAP BULANNYA
+SELECT
+    DATE_TRUNC('month', date_stolen) AS bulan,
+    AVG(total_stolen) AS rata_rata_pencurian_per_bulan
+FROM (
+    SELECT
+        date_stolen,
+        COUNT(*) AS total_stolen
+    FROM
+        stolen_vehicle
+    GROUP BY
+        date_stolen
+) AS daily_stolen
+GROUP BY
+    DATE_TRUNC('month', date_stolen)
+ORDER BY
+    DATE_TRUNC('month', date_stolen);
+
+
+
+
+
+
+
+
+1. KORELASI: 
+Select 
+	Corr(population, total_stolen_vehicles) as Korelasi
+from region_stolen
+
+
+SELECT 
+    sv.population,
+    SUM(sv.total_stolen_vehicles) AS total_stolen,
+    region
+FROM 
+    region_stolen sv
+GROUP BY 
+    sv.region,
+    sv.population, 
+    sv.total_stolen_vehicles
+order by population asc
+limit 6

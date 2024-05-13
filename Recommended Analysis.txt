@@ -1,0 +1,264 @@
+Recommended Analysis
+
+1. What day of the week are vehicles most often and least often stolen?
+2. What types of vehicles are most often and least often stolen? Does this vary by region?
+3. What is the average age of the vehicles that are stolen? Does this vary based on the vehicle type?
+4. Which regions have the most and least number of stolen vehicles? What are the characteristics of the regions?
+
+
+
+Recommended Analysis
+1. Hari apa dalam seminggu kendaraan paling sering dan paling jarang dicuri?
+Query: 
+select to_char (date_stolen, 'Day') as day_of_week,
+	count(*) as stolen_count
+from stolen_vehicle
+group by day_of_week
+order by stolen_count desc
+limit 7
+
+
+Query: 
+-- vehicles most often stolen
+SELECT 
+    date_stolen AS day_of_week,
+    COUNT(*) AS total_stolen_vehicles
+FROM 
+    stolen_vehicle
+GROUP BY 
+    day_of_week
+ORDER BY 
+    total_stolen_vehicles DESC;
+
+
+
+
+2. Jenis kendaraan apa yang paling sering dan paling jarang dicuri? Apakah ini berbeda-beda di setiap wilayah?
+Query:
+-- Jenis kendaraan yang paling jarang dicuri berdasarkan wilayah
+SELECT 
+    sv.vehicle_type,
+    l.region,
+    COUNT(*) AS total_stolen
+FROM 
+    stolen_vehicle sv
+JOIN 
+    locations l ON sv.location_id = l.location_id
+GROUP BY 
+    sv.vehicle_type, l.region
+HAVING 
+    COUNT(*) = (
+        SELECT 
+            MAX(stolen_count)
+        FROM (
+            SELECT 
+                sv.vehicle_type,
+                l.region,
+                COUNT(*) AS stolen_count
+            FROM 
+                stolen_vehicle sv
+            JOIN 
+                locations l ON sv.location_id = l.location_id
+            GROUP BY 
+                sv.vehicle_type, l.region
+        ) AS counts
+        WHERE 
+            counts.vehicle_type = sv.vehicle_type
+            AND counts.region = l.region
+    )
+ORDER BY 
+    total_stolen DESC
+limit 10;
+
+
+
+
+
+3. Berapa rata-rata umur kendaraan yang dicuri? Apakah ini bervariasi berdasarkan jenis kendaraan?
+Query:
+----======== Kendaraan dengan rata-rata umur paling lama
+SELECT 
+    vehicle_type,
+    AVG(EXTRACT(YEAR FROM CURRENT_DATE)::INTEGER - CAST(model_year AS INTEGER)) AS average_umur
+FROM 
+    stolen_vehicle
+GROUP BY 
+    vehicle_type
+order by average_umur desc
+limit 5
+
+
+-- ----======== Kendaraan dengan rata-rata umur paling singkat
+-- SELECT 
+--     vehicle_type,
+--     AVG(EXTRACT(YEAR FROM CURRENT_DATE)::INTEGER - CAST(model_year AS INTEGER)) AS average_umur
+-- FROM 
+--     stolen_vehicle
+-- GROUP BY 
+--     vehicle_type
+-- order by average_umur asc
+-- limit 5
+
+
+
+
+-- Jumlah kendaraan yang dicuri berdasarkan tahun dan jenis kendaraan (ascending)
+SELECT 
+    sv.model_year,
+    sv.vehicle_type,
+    COUNT(*) AS total_stolen
+FROM 
+    stolen_vehicle sv
+GROUP BY 
+    sv.model_year, sv.vehicle_type
+ORDER BY 
+    model_year desc;
+	
+	
+
+
+4. Wilayah manakah yang memiliki jumlah kendaraan curian terbanyak dan paling sedikit? Apa ciri-ciri daerahnya?
+
+Query:
+-- Wilayah dengan jumlah kendaraan curian terbanyak
+FROM SELECT 
+    l.region, l.population, l.density,
+    COUNT(*) AS total_stolen_vehicles
+
+    stolen_vehicle sv
+JOIN 
+    locations l ON sv.location_id = l.location_id
+GROUP BY 
+    l.region, l.population, l.density
+ORDER BY 
+    total_stolen_vehicles DESC
+LIMIT 1;
+
+-- Wilayah dengan jumlah kendaraan curian paling sedikit
+SELECT 
+    l.region, l.population, l.density,
+    COUNT(*) AS total_stolen_vehicles
+FROM 
+    stolen_vehicle sv
+JOIN 
+    locations l ON sv.location_id = l.location_id
+GROUP BY 
+     l.region, l.population, l.density
+ORDER BY 
+    total_stolen_vehicles ASC
+LIMIT 1;
+
+
+
+
+
+
+END TO END ANALISIS:
+QUERY:
+
+-- Menampilkan jumlah kendaraan curian berdasarkan jenis kendaraan, model tahun, warna kendaraan dan wilayah
+SELECT 
+    sv.vehicle_type,
+    sv.model_year,
+	sv.color,
+    l.region,
+    COUNT(*) AS total_stolen_vehicles
+FROM 
+    stolen_vehicle sv
+JOIN 
+    locations l ON sv.location_id = l.location_id
+GROUP BY 
+    sv.vehicle_type, sv.model_year, sv.color, l.region
+ORDER BY 
+    total_stolen_vehicles DESC
+	LIMIT 10
+
+
+
+-- Menampilkan wilayah dengan jumlah kendaraan curian terbanyak beserta populasi
+SELECT 
+    l.region,
+    l.population,
+    COUNT(*) AS total_stolen_vehicles
+FROM 
+    stolen_vehicle sv
+JOIN 
+    locations l ON sv.location_id = l.location_id
+GROUP BY 
+    l.region, l.population
+ORDER BY 
+    total_stolen_vehicles DESC
+LIMIT 100;
+
+
+CREATE TABLE:
+CREATE TABLE region_stolen AS
+SELECT 
+    l.region,
+    l.population,
+    COUNT(*) AS total_stolen_vehicles
+FROM 
+    stolen_vehicle sv
+JOIN 
+    locations l ON sv.location_id = l.location_id
+GROUP BY 
+    l.region, l.population
+ORDER BY 
+    total_stolen_vehicles DESC
+LIMIT 100;
+
+
+
+
+
+SELECT 
+    sv.vehicle_type,
+    COUNT(*) AS total_stolen
+FROM 
+    stolen_vehicle sv
+JOIN 
+    locations l ON sv.location_id = l.location_id
+GROUP BY 
+    sv.vehicle_type
+ORDER BY 
+    total_stolen asc
+	limit 10;
+
+
+
+SELECT 
+    sv.model_year,
+    COUNT(*) AS total_stolen
+FROM 
+    stolen_vehicle sv
+JOIN 
+    locations l ON sv.location_id = l.location_id
+GROUP BY 
+    sv.model_year
+ORDER BY 
+    total_stolen DESC;
+
+
+
+
+
+
+
+1. KORELASI: 
+Select 
+	Corr(population, total_stolen_vehicles) as Korelasi
+from region_stolen
+
+
+SELECT 
+    sv.population,
+    SUM(sv.total_stolen_vehicles) AS total_stolen,
+    region
+FROM 
+    region_stolen sv
+GROUP BY 
+    sv.region,
+    sv.population, 
+    sv.total_stolen_vehicles
+order by population asc
+limit 6
